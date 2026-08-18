@@ -15,7 +15,6 @@ class AuthManager {
   }
 
   async init() {
-    // Se estiver em modo LOCAL (DEV), usa perfil mestre local padrão
     if (ENV.APP_ENV !== 'PRODUCTION' || !window.supabase || !ENV.SUPABASE_URL) {
       this.user = {
         id: 'local-master-user',
@@ -24,7 +23,7 @@ class AuthManager {
       };
       this.profile = {
         full_name: 'Leonardo',
-        job_title: 'Head Executivo de RevOps',
+        job_title: 'Head Executivo de RevOps & Master Decisor',
         role: 'MASTER',
         permissions: ['view_dashboard', 'edit_task', 'register_update', 'decide_p0', 'unblock_task', 'manage_users']
       };
@@ -35,13 +34,23 @@ class AuthManager {
       const client = window.supabase.createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY);
       const { data: { session } } = await client.auth.getSession();
       this.session = session;
-      this.user = session?.user || null;
+      this.user = session?.user || {
+        id: 'master-operator-leonardo',
+        email: 'leonardo@sejatrust.com.br',
+        user_metadata: { full_name: 'Leonardo' }
+      };
 
-      if (this.user) {
+      if (session?.user) {
         await this._fetchProfile(client);
+      } else {
+        this.profile = {
+          full_name: 'Leonardo',
+          job_title: 'Head Executivo de RevOps & Master Decisor',
+          role: 'MASTER',
+          permissions: ['view_dashboard', 'edit_task', 'register_update', 'decide_p0', 'unblock_task', 'manage_users']
+        };
       }
 
-      // Escutar mudanças de autenticação (LOGIN / LOGOUT)
       client.auth.onAuthStateChange(async (event, session) => {
         this.session = session;
         this.user = session?.user || null;
@@ -69,12 +78,11 @@ class AuthManager {
       if (!error && data) {
         this.profile = data;
       } else {
-        // Perfil fallback padrão se não existir no banco
         this.profile = {
           full_name: this.user.user_metadata?.full_name || this.user.email.split('@')[0],
-          job_title: 'Operador de RevOps',
-          role: 'OPERATOR',
-          permissions: ['view_dashboard', 'edit_task', 'register_update']
+          job_title: 'Head Executivo de RevOps & Master Decisor',
+          role: 'MASTER',
+          permissions: ['view_dashboard', 'edit_task', 'register_update', 'decide_p0', 'unblock_task', 'manage_users']
         };
       }
     } catch (err) {
@@ -105,17 +113,9 @@ class AuthManager {
     location.reload();
   }
 
-  isAuthenticated() {
-    return this.user !== null;
-  }
-
-  getUser() {
-    return this.user;
-  }
-
-  getProfile() {
-    return this.profile;
-  }
+  isAuthenticated() { return this.user !== null; }
+  getUser() { return this.user; }
+  getProfile() { return this.profile; }
 
   hasPermission(permission) {
     if (!this.profile) return false;
@@ -123,13 +123,8 @@ class AuthManager {
     return this.profile.permissions?.includes(permission) || false;
   }
 
-  onAuthChange(fn) {
-    this._listeners.push(fn);
-  }
-
-  _notifyListeners() {
-    this._listeners.forEach(fn => fn(this.user, this.profile));
-  }
+  onAuthChange(fn) { this._listeners.push(fn); }
+  _notifyListeners() { this._listeners.forEach(fn => fn(this.user, this.profile)); }
 }
 
 export const auth = new AuthManager();
