@@ -53,15 +53,30 @@ export class SupabaseStorageAdapter {
   async getWorkstreams() {
     if (this.diagnosticState === 'LOCAL') return this.localFallback.getWorkstreams();
     this._assertCloudReadable();
-    const { data, error } = await this.client.from('workstreams').select('*');
-    if (error) this._handleCloudError('getWorkstreams', error);
-    return (data || []).map(ws => ({
-      ...ws,
-      progressPct: ws.progress_pct !== undefined ? ws.progress_pct : ws.progressPct,
-      healthScore: ws.health_score || ws.healthScore,
-      operationalStatus: ws.operational_status || ws.operationalStatus,
-      validationStatus: ws.validation_status || ws.validationStatus,
-    }));
+    const [wsRes, tasksRes] = await Promise.all([
+      this.client.from('workstreams').select('*'),
+      this.client.from('tasks').select('*')
+    ]);
+    if (wsRes.error) this._handleCloudError('getWorkstreams', wsRes.error);
+
+    const allTasks = tasksRes.data || [];
+
+    return (wsRes.data || []).map(ws => {
+      const wsTasks = allTasks.filter(t => (t.workstream_id || t.workstreamId) === ws.id);
+      const tasksDone = wsTasks.filter(t => (t.operational_status || t.status) === 'DONE').length;
+      const tasksBlocked = wsTasks.filter(t => (t.operational_status || t.status) === 'BLOCKED').length;
+
+      return {
+        ...ws,
+        progressPct: ws.progress_pct !== undefined ? ws.progress_pct : ws.progressPct,
+        healthScore: ws.health_score || ws.healthScore,
+        operationalStatus: ws.operational_status || ws.operationalStatus,
+        validationStatus: ws.validation_status || ws.validationStatus,
+        tasksTotal: wsTasks.length,
+        tasksDone,
+        tasksBlocked,
+      };
+    });
   }
 
   async getTasks() {
