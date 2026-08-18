@@ -1,5 +1,5 @@
 /**
- * views/workstreams.js — Frentes & Tarefas (Design System 2.0 / Premium Enterprise)
+ * views/workstreams.js — Frentes & Tarefas
  *
  * TRUST Revenue Command Center
  */
@@ -33,13 +33,11 @@ export function renderWorkstreams() {
       </button>
     </div>
 
-    <!-- TABS DE FRENTES (SUBTLE & SEM SCROLLBAR AGRESSIVA) -->
+    <!-- TABS DE FRENTES -->
     <div class="op-tabs-wrap">
       <div class="op-tabs no-scrollbar">
         ${workstreams.map(ws => {
           const health = store.getDerivedWorkstreamHealth(ws.id);
-          const tasks = store.getTasksByWorkstream(ws.id);
-          const blocked = tasks.filter(t => t.status === 'BLOCKED').length;
           return `
             <button class="op-tab-btn ${selectedId === ws.id ? 'active' : ''}"
                     onclick="selectWorkstream('${ws.id}')">
@@ -138,15 +136,15 @@ export function renderWorkstreams() {
 
           <div class="text-xs text-muted mb-1">PRÓXIMO MARCO</div>
           <div class="text-xs font-mono fw-semibold text-primary mb-3">
-            ${selectedWs.latestUpdate?.nextMilestone || 'D05'}
+            ${selectedWs.latestUpdate?.nextMilestone || 'D05 · Validação Geral'}
           </div>
 
           <div class="text-xs text-muted mb-1">PRÓXIMA AÇÃO</div>
-          <div class="text-xs text-brand fw-medium mb-4">
-            → ${selectedWs.latestUpdate?.nextAction || 'Acompanhamento rotineiro.'}
+          <div class="text-xs text-secondary mb-4">
+            ${selectedWs.latestUpdate?.nextAction || '→ Acompanhamento rotineiro.'}
           </div>
 
-          <div class="pt-3 flex justify-between items-center" style="border-top: 1px solid var(--border-subtle);">
+          <div class="flex justify-between items-center pt-3" style="border-top: 1px solid var(--border-subtle);">
             <span class="text-xs text-muted">Autor: <strong class="text-primary">${selectedWs.latestUpdate?.author || selectedWs.owner}</strong></span>
             <button class="text-brand text-xs fw-semibold" onclick="openUpdateModal('${selectedWs.id}', '${selectedWs.code}')">+ Novo Relato</button>
           </div>
@@ -158,7 +156,6 @@ export function renderWorkstreams() {
   `;
 }
 
-// Modal Handlers (Task transitions and updates)
 window.openUpdateModal = function(wsId, wsCode) {
   const container = document.getElementById('ws-modal-container');
   if (!container) return;
@@ -236,7 +233,8 @@ window.submitWsUpdate = async function(wsId) {
   });
 
   closeWsModal();
-  store.navigateTo('workstreams');
+  const container = document.getElementById('page-container');
+  if (container) container.innerHTML = renderWorkstreams();
 };
 
 window.openTaskTransitionModal = function(taskId, code, title, currentStatus) {
@@ -297,7 +295,8 @@ window.submitTaskTransition = async function(taskId) {
   );
 
   closeWsModal();
-  store.navigateTo('workstreams');
+  const container = document.getElementById('page-container');
+  if (container) container.innerHTML = renderWorkstreams();
 };
 
 window.selectWorkstream = function(wsId) {
