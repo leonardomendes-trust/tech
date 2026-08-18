@@ -50,6 +50,10 @@ export class SupabaseStorageAdapter {
     };
   }
 
+  // =========================================================================
+  // LEITURAS (READ)
+  // =========================================================================
+
   async getWorkstreams() {
     if (this.diagnosticState === 'LOCAL') return this.localFallback.getWorkstreams();
     this._assertCloudReadable();
@@ -183,6 +187,10 @@ export class SupabaseStorageAdapter {
   async getIntegrationHealth() { return this.localFallback.getIntegrationHealth(); }
   async getEvidences() { return this.localFallback.getEvidences(); }
 
+  // =========================================================================
+  // MUTAÇÕES & TRANSIÇÕES DE STATUS (WRITE)
+  // =========================================================================
+
   async resolveDecision(decisionId, resolutionNotes, decidedBy, recordedBy, minutesRef) {
     if (this.diagnosticState === 'LOCAL') {
       return this.localFallback.resolveDecision(decisionId, { resolutionNotes, decidedBy, recordedBy, minutesRef });
@@ -215,6 +223,81 @@ export class SupabaseStorageAdapter {
     return data;
   }
 
+  async transitionTaskStatus(taskId, { newStatus, reason, actor, blockReason }) {
+    if (this.diagnosticState === 'LOCAL') {
+      return this.localFallback.transitionTaskStatus(taskId, { newStatus, reason, actor, blockReason });
+    }
+
+    this._assertCloudWritable();
+    const updatePayload = {
+      operational_status: newStatus,
+      updated_at: new Date().toISOString()
+    };
+    if (newStatus === 'BLOCKED') {
+      updatePayload.block_reason = blockReason || reason || 'Bloqueio operacional.';
+    } else {
+      updatePayload.block_reason = null;
+    }
+    if (newStatus === 'DONE') {
+      updatePayload.percent_complete = 100;
+    }
+
+    const { data, error } = await this.client
+      .from('tasks')
+      .update(updatePayload)
+      .eq('id', taskId);
+
+    if (error) this._handleCloudError('transitionTaskStatus', error);
+
+    await this.client.from('event_log').insert({
+      actor_name: actor || 'Comercial Lead',
+      entity_type: 'TASK',
+      entity_id: taskId,
+      event_type: 'TASK_STATUS_CHANGED',
+      reason: reason || `Status atualizado para ${newStatus}`,
+      metadata: { new_status: newStatus }
+    });
+
+    return data;
+  }
+
+  async operationalUnblockTask(taskId, unblockData) {
+    if (this.diagnosticState === 'LOCAL') {
+      return this.localFallback.operationalUnblockTask(taskId, unblockData);
+    }
+
+    const reason = `[Desbloqueio: ${unblockData.unblockStrategy || 'Operacional'}] ${unblockData.reason || ''} (Alinhado: ${unblockData.decider || 'Comercial'})`;
+    return this.unblockTaskOperational(taskId, reason, unblockData.author || 'Leonardo (Ops)');
+  }
+
+  async addWorkstreamUpdate(workstreamId, updateData) {
+    if (this.diagnosticState === 'LOCAL') {
+      return this.localFallback.addWorkstreamUpdate(workstreamId, updateData);
+    }
+
+    this._assertCloudWritable();
+    const { data, error } = await this.client
+      .from('workstreams')
+      .update({
+        health_score: updateData.health || 'ON_TRACK',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workstreamId);
+
+    if (error) this._handleCloudError('addWorkstreamUpdate', error);
+
+    await this.client.from('event_log').insert({
+      actor_name: updateData.author || 'Comercial Ops',
+      entity_type: 'WORKSTREAM',
+      entity_id: workstreamId,
+      event_type: 'WORKSTREAM_UPDATE',
+      reason: updateData.summary,
+      metadata: updateData
+    });
+
+    return data;
+  }
+
   async refuteICP(icpId, reason, learning, correctiveAction, actorName) {
     if (this.diagnosticState === 'LOCAL') {
       return this.localFallback.refuteICP(icpId, { reason, learning, correctiveAction, refutedBy: actorName });
@@ -229,6 +312,19 @@ export class SupabaseStorageAdapter {
     });
     if (error) this._handleCloudError('rpc_refute_icp', error);
     return data;
+  }
+
+  async refuteICPHypothesis(icpId, refutationData) {
+    if (this.diagnosticState === 'LOCAL') {
+      return this.localFallback.refuteICPHypothesis(icpId, refutationData);
+    }
+    return this.refuteICP(
+      icpId,
+      refutationData.reason,
+      refutationData.keyLearning || '',
+      refutationData.correctiveAction || '',
+      refutationData.author || 'Comercial'
+    );
   }
 
   async updateFunnelStage(id, updates) {
