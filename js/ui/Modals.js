@@ -1,12 +1,7 @@
 /**
- * ui/Modals.js — Handlers Globais Unificados de Decisão, Desbloqueio e Transições
+ * ui/Modals.js — Handlers Globais de Decisão, Desbloqueio e Transições
  *
- * TRUST Revenue Command Center (Fase 4.1)
- *
- * Separação dos 3 Papéis:
- * - Quem Registra (Usuário autenticado / Operador)
- * - Quem Delibera / Alinha (Diretoria, Diretor Comercial, etc.)
- * - Quem Executa (Comercial, SDR, RevOps, Marketing)
+ * TRUST Revenue Command Center
  */
 
 import { store } from '../state/StateManager.js';
@@ -88,13 +83,15 @@ export async function submitDecision(id) {
   await store.resolveDecision(id, fullNotes, deciderEl.value);
   closeModal();
   drawer.close();
-  navigateTo('decisions');
+  const state = store.getState();
+  const container = document.getElementById('page-container');
+  if (container && state.activePage === 'decisions') {
+    import('../views/risks-decisions.js').then(m => {
+      container.innerHTML = m.renderDecisionsAndRisks();
+    });
+  }
 }
 
-/**
- * Modal de Desbloqueio Operacional (Fase 4.1)
- * Permite avançar uma tarefa/frente com status ACTIVE_WITH_VALIDATION_PENDING
- */
 export function openOperationalUnblockModal(taskId, code, title, blockReason) {
   let container = document.getElementById('modal-container');
   if (!container) {
@@ -184,7 +181,13 @@ export async function submitOperationalUnblock(taskId) {
 
   closeModal();
   drawer.close();
-  navigateTo('overview');
+  const state = store.getState();
+  const container = document.getElementById('page-container');
+  if (container && state.activePage === 'overview') {
+    import('../views/overview.js').then(m => {
+      container.innerHTML = m.renderOverview();
+    });
+  }
 }
 
 export function closeModal() {
