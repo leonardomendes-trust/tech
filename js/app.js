@@ -5,6 +5,7 @@
  */
 
 import { store } from './state/StateManager.js';
+import { auth } from './auth/AuthManager.js';
 import { renderOverview }   from './views/overview.js';
 import { renderWorkstreams }from './views/workstreams.js';
 import { renderRisks, renderDecisions } from './views/risks-decisions.js';
@@ -70,6 +71,9 @@ function renderShell(state) {
   return `
     <header class="topbar">
       <div class="topbar__brand">
+        <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
         <div class="topbar__logo">T</div>
         <div class="topbar__title">
           Revenue Command Center
@@ -177,6 +181,11 @@ function renderPage(pageId, state) {
   return renderer();
 }
 
+window.toggleMobileSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.toggle('mobile-open');
+};
+
 window.navigateTo = function(pageId) {
   drawer.close();
   store.navigateTo(pageId);
@@ -189,6 +198,8 @@ window.navigateTo = function(pageId) {
       el.classList.toggle('active', el.dataset.page === pageId);
     });
   }
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.remove('mobile-open');
 };
 
 window.changeTimeTravelDay = function(value) {
@@ -220,6 +231,15 @@ document.addEventListener('click', (e) => {
   const menu = document.getElementById('user-dropdown-menu');
   if (menu && wrap && !wrap.contains(e.target)) {
     menu.classList.remove('active');
+  }
+
+  // Fechar sidebar mobile ao clicar fora
+  const sidebar = document.getElementById('sidebar');
+  const menuBtn = document.querySelector('.mobile-menu-btn');
+  if (sidebar && sidebar.classList.contains('mobile-open')) {
+    if (!sidebar.contains(e.target) && menuBtn && !menuBtn.contains(e.target)) {
+      sidebar.classList.remove('mobile-open');
+    }
   }
 });
 
