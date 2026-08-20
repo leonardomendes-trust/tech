@@ -253,6 +253,30 @@ window.setTheme = function(theme) {
   });
 };
 
+function updateNavigationBadges(state) {
+  NAV.forEach(group => {
+    group.items.forEach(item => {
+      if (item.badge) {
+        const count = getBadgeCount(item.badge, state);
+        const linkEl = document.querySelector(`.nav-link[data-page="${item.id}"]`);
+        if (linkEl) {
+          let badgeEl = linkEl.querySelector('.nav-badge');
+          if (count > 0) {
+            if (!badgeEl) {
+              badgeEl = document.createElement('span');
+              badgeEl.className = 'nav-badge';
+              linkEl.appendChild(badgeEl);
+            }
+            badgeEl.textContent = count;
+          } else if (badgeEl) {
+            badgeEl.remove();
+          }
+        }
+      }
+    });
+  });
+}
+
 function mount() {
   store.subscribe('activePage', (state) => {
     const pageContainer = document.getElementById('page-container');
@@ -263,7 +287,16 @@ function mount() {
       document.querySelectorAll('.nav-link').forEach(el => {
         el.classList.toggle('active', el.dataset.page === state.activePage);
       });
+      updateNavigationBadges(state);
     }
+  });
+
+  store.subscribe('decisions', (state) => {
+    updateNavigationBadges(state);
+  });
+
+  store.subscribe('risks', (state) => {
+    updateNavigationBadges(state);
   });
 
   store.subscribe('selectedWorkstreamId', (state) => {
