@@ -10,7 +10,7 @@ import { drawer } from '../ui/DrawerManager.js';
 export function renderOverview() {
   const state = store.getState();
   const dayInfo = store.getCurrentDayInfo();
-  const progress = store.getAggregateProgress();
+  const progress = store.getImplantacaoProgress();
   const criticalRisks = store.getCriticalRisks();
   const pendingDecisions = (state.decisions || []).filter(d => d.status === 'PENDING');
   const workstreams = state.workstreams || [];
@@ -23,7 +23,7 @@ export function renderOverview() {
     <div class="page-header">
       <div class="page-header__title-group">
         <div class="page-header__eyebrow">Torre de Comando · Cockpit Diário</div>
-        <h1 class="page-header__title">HOJE · ${dayInfo.dayLabel} · ${dayInfo.weekday}, ${dayInfo.dateFormatted}</h1>
+        <h1 class="page-header__title">HOJE · ${dayInfo.dayLabel} · ${dayInfo.weekday || 'Hoje'}, ${dayInfo.formattedDate || ''}</h1>
         <p class="page-header__subtitle">
           Acompanhamento operacional em tempo real da implantação comercial TRUST.
         </p>
