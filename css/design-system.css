@@ -1,5 +1,5 @@
 /* ============================================================
-   TRUST Revenue Command Center — Design System 2.5 (Mobile Responsive)
+   TRUST Revenue Command Center — Design System 2.5 (Mobile & Modal Fix)
    ============================================================ */
 
 :root {
@@ -273,9 +273,84 @@ a { color: inherit; text-decoration: none; }
 .stat-item__label { font-size: var(--fs-2xs); color: var(--text-muted); font-weight: var(--fw-semibold); text-transform: uppercase; }
 .stat-item__value { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--text-primary); font-family: var(--font-mono); }
 
+/* ============================================================
+   DRAWER & MODAL BACKDROP (CORREÇÃO DE CAMADA FLUTUANTE)
+   ============================================================ */
+.drawer-backdrop {
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  z-index: 1000 !important;
+  display: none !important;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+.drawer-backdrop.active {
+  display: flex !important;
+}
+.drawer {
+  width: 100%;
+  max-width: var(--drawer-w);
+  height: 100%;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-drawer);
+  border-left: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+  animation: slideInRight 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.drawer__header {
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: var(--bg-elevated);
+}
+.drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-6);
+}
+.drawer__footer {
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+}
+.drawer-section {
+  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.drawer-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.drawer-section__title {
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-3);
+}
+
 /* Utilities */
 .flex { display: flex; }
-.flex-col { flex-direction: column; }
+.flex-col { display: flex; flex-direction: column; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
 .gap-2 { gap: var(--sp-2); }
@@ -310,7 +385,9 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-primary); cursor: pointer; margin-right: var(--sp-2);
 }
 
-/* RESPONSIVIDADE MOBILE & TABLET */
+/* ============================================================
+   RESPONSIVIDADE MOBILE & TABLET
+   ============================================================ */
 @media (max-width: 992px) {
   :root { --sidebar-w: 260px; }
   .mobile-menu-btn { display: inline-flex; }
@@ -326,6 +403,7 @@ a { color: inherit; text-decoration: none; }
   .page-header, .op-header { flex-direction: column; align-items: flex-start; gap: var(--sp-3); }
   .op-tabs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .op-table-wrap, .op-table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .drawer { width: 100% !important; max-width: 100% !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
 }
 
 @media (max-width: 600px) {
