@@ -188,23 +188,47 @@ export class SupabaseStorageAdapter {
   async getEvidences() { return this.localFallback.getEvidences(); }
 
   // =========================================================================
-  // MUTAÇÕES & TRANSIÇÕES DE STATUS (WRITE)
+  // MUTAÇÕES & DELIBERAÇÕES (WRITE)
   // =========================================================================
 
   async resolveDecision(decisionId, resolutionNotes, decidedBy, recordedBy, minutesRef) {
     if (this.diagnosticState === 'LOCAL') {
-      return this.localFallback.resolveDecision(decisionId, { resolutionNotes, decidedBy, recordedBy, minutesRef });
+      return this.localFallback.resolveDecision(decisionId, {
+        resolutionNotes,
+        decidedBy,
+        recordedBy,
+        minutesRef
+      });
     }
+
     this._assertCloudWritable();
-    const { data, error } = await this.client.rpc('rpc_resolve_decision', {
-      p_decision_id: decisionId,
-      p_resolution_notes: resolutionNotes,
-      p_decided_by: decidedBy,
-      p_recorded_by: recordedBy,
-      p_minutes_ref: minutesRef,
-      p_status: 'APPROVED'
+    
+    // Atualização direta na tabela de decisões
+    const { data, error } = await this.client
+      .from('decisions')
+      .update({
+        status: 'APPROVED',
+        resolution_notes: resolutionNotes,
+        decided_by: decidedBy || 'Diretoria',
+        recorded_by: recordedBy || 'Leonardo (Ops)',
+        minutes_reference: minutesRef || null,
+        resolved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', decisionId);
+
+    if (error) this._handleCloudError('resolveDecision', error);
+
+    // Registro na trilha de auditoria (event_log)
+    await this.client.from('event_log').insert({
+      actor_name: recordedBy || 'Leonardo (Ops)',
+      entity_type: 'DECISION',
+      entity_id: decisionId,
+      event_type: 'DECISION_RESOLVED',
+      reason: resolutionNotes,
+      metadata: { decided_by: decidedBy, minutes_ref: minutesRef, status: 'APPROVED' }
     });
-    if (error) this._handleCloudError('rpc_resolve_decision', error);
+
     return data;
   }
 
@@ -212,14 +236,33 @@ export class SupabaseStorageAdapter {
     if (this.diagnosticState === 'LOCAL') {
       return this.localFallback.unblockTask(taskId, reason, actorName, unblockType);
     }
+
     this._assertCloudWritable();
-    const { data, error } = await this.client.rpc('rpc_unblock_task_operational', {
-      p_task_id: taskId,
-      p_unblock_reason: reason,
-      p_actor_name: actorName,
-      p_unblock_type: unblockType
+    const { data, error } = await this.client
+      .from('tasks')
+      .update({
+        operational_status: 'IN_PROGRESS',
+        validation_status: 'PENDING',
+        is_unblocked_override: true,
+        unblock_type: unblockType,
+        unblock_reason: reason,
+        unblock_actor_name: actorName || 'Leonardo (Ops)',
+        unblocked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId);
+
+    if (error) this._handleCloudError('unblockTaskOperational', error);
+
+    await this.client.from('event_log').insert({
+      actor_name: actorName || 'Leonardo (Ops)',
+      entity_type: 'TASK',
+      entity_id: taskId,
+      event_type: 'OPERATIONAL_UNBLOCK',
+      reason: reason,
+      metadata: { unblock_type: unblockType }
     });
-    if (error) this._handleCloudError('rpc_unblock_task_operational', error);
+
     return data;
   }
 
@@ -302,15 +345,29 @@ export class SupabaseStorageAdapter {
     if (this.diagnosticState === 'LOCAL') {
       return this.localFallback.refuteICP(icpId, { reason, learning, correctiveAction, refutedBy: actorName });
     }
+
     this._assertCloudWritable();
-    const { data, error } = await this.client.rpc('rpc_refute_icp', {
-      p_icp_id: icpId,
-      p_reason: reason,
-      p_learning: learning,
-      p_corrective_action: correctiveAction,
-      p_actor_name: actorName
+    const { data, error } = await this.client
+      .from('icps')
+      .update({
+        validation_status: 'REFUTED',
+        key_learning: learning,
+        corrective_action: correctiveAction,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', icpId);
+
+    if (error) this._handleCloudError('refuteICP', error);
+
+    await this.client.from('event_log').insert({
+      actor_name: actorName || 'Comercial',
+      entity_type: 'ICP',
+      entity_id: icpId,
+      event_type: 'ICP_REFUTED',
+      reason: reason,
+      metadata: { key_learning: learning, corrective_action: correctiveAction }
     });
-    if (error) this._handleCloudError('rpc_refute_icp', error);
+
     return data;
   }
 
