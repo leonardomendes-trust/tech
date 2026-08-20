@@ -2,13 +2,6 @@
  * State Manager — Gerenciador de Estado Reativo Canônico (Fase 2)
  *
  * TRUST Revenue Command Center
- *
- * Expõe métodos para operações autônomas completas:
- * - resolveDecision()
- * - transitionTaskStatus()
- * - addWorkstreamUpdate()
- * - addEvidence()
- * - togglePOPChecklist()
  */
 
 import { AutonomousStorageAdapter } from '../adapters/AutonomousStorageAdapter.js';
@@ -52,7 +45,7 @@ class StateManager {
         logEntityType: 'ALL',
       },
       selectedWorkstreamId: null,
-      selectedStrategySection: 'POPS', // 'POPS' | 'ICPS' | 'BATTLECARDS'
+      selectedStrategySection: 'POPS',
       selectedICPSolution: 'ALL',
       selectedBCSolution: 'ALL',
     };
@@ -62,14 +55,12 @@ class StateManager {
     const config = this._state.platformConfig;
     if (!config) return { currentDay: 1, formattedDate: 'Sábado, 15 Ago 2026', dayLabel: 'D01' };
     
-    // Se houver dia simulado manual no localStorage/config, usar ele
     const simulated = localStorage.getItem('trust_rcc_simulated_day');
     let dayNumber;
 
     if (simulated !== null && !isNaN(parseInt(simulated, 10))) {
       dayNumber = parseInt(simulated, 10);
     } else {
-      // Início D0 = 2026-08-14, D1 = 2026-08-15
       const startDate = new Date(config.implantacaoStart || '2026-08-14T00:00:00');
       const now = new Date();
       const diffTime = now.getTime() - startDate.getTime();
@@ -80,8 +71,6 @@ class StateManager {
     if (dayNumber > 30) dayNumber = 30;
 
     const dayLabel = dayNumber < 10 ? `D0${dayNumber}` : `D${dayNumber}`;
-
-    // Calcular data simulada correspondente ao dia
     const baseDate = new Date('2026-08-14T00:00:00');
     const targetDate = new Date(baseDate.getTime() + dayNumber * 24 * 60 * 60 * 1000);
 
@@ -221,11 +210,9 @@ class StateManager {
     }
   }
 
-  // --- Ações Operacionais Autônomas (Fase 2) ---
-
   async resolveDecision(decisionId, resolutionNotes, actor = 'Diretoria') {
     if (this._adapter.resolveDecision) {
-      await this._adapter.resolveDecision(decisionId, { resolutionNotes, actor });
+      await this._adapter.resolveDecision(decisionId, resolutionNotes, actor);
       await this._refreshCore();
     }
   }
@@ -335,8 +322,6 @@ class StateManager {
     this._emit(['selectedBCSolution']);
   }
 
-  // ---- Derived data helpers ----
-
   getFilteredTasks() {
     const { tasks, filters } = this._state;
     return tasks.filter(t => {
@@ -348,8 +333,6 @@ class StateManager {
     });
   }
 
-  // ---- Temporal Condition & Derived Health Helpers (Fase 2.2) ----
-
   getTaskTemporalCondition(task) {
     const { platformConfig } = this._state;
     if (task.status === 'DONE') return 'COMPLETED';
@@ -357,12 +340,10 @@ class StateManager {
     const currentDay = platformConfig?.currentDay || 1;
     const startStr = platformConfig?.implantacaoStart || '2026-08-14';
 
-    // Se dueDate está em formato YYYY-MM-DD
     if (task.dueDate && task.dueDate.includes('-')) {
       const d = new Date(task.dueDate);
       const s = new Date(startStr);
       const diffDays = Math.floor((d - s) / (1000 * 60 * 60 * 24));
-      // diffDays = 0 => D0 (14/08), diffDays = 1 => D1 (15/08)
       if (diffDays < currentDay) return 'OVERDUE';
       if (diffDays === currentDay || diffDays === currentDay + 1) return 'DUE_SOON';
       return 'ON_TIME';
@@ -392,6 +373,10 @@ class StateManager {
     const blocked = tasks.filter(t => t.status === 'BLOCKED').length;
     const delayed = this.getDerivedDelayedTasksCount();
     return { pct: Math.round((done / tasks.length) * 100), done, total: tasks.length, blocked, delayed };
+  }
+
+  getAggregateProgress() {
+    return this.getImplantacaoProgress();
   }
 
   getCriticalRisks() {
