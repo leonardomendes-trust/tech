@@ -2,14 +2,6 @@
  * ui/DrawerManager.js — Gerenciador Unificado de Painel Lateral (Drawer)
  *
  * TRUST Revenue Command Center (Design System 2.0)
- *
- * Renderiza detalhes contextuais (Nível 2 & Nível 3) sob demanda para:
- * - Tarefas
- * - Decisões
- * - Riscos
- * - Frentes
- * - POPs
- * - ICPs
  */
 
 import { store } from '../state/StateManager.js';
@@ -36,6 +28,10 @@ class DrawerManager {
   close() {
     const el = document.getElementById('drawer-backdrop');
     if (el) el.classList.remove('active');
+    setTimeout(() => {
+      const container = document.getElementById('drawer-container');
+      if (container) container.innerHTML = '';
+    }, 150);
   }
 
   openTask(taskId) {
