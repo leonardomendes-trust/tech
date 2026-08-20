@@ -2,13 +2,6 @@
  * views/activity-log.js — Memória Operacional da Torre (Fase 2)
  *
  * TRUST Revenue Command Center
- *
- * Linha do tempo auditável de todos os eventos da implantação e operação:
- * - Transições de status de tarefas
- * - Decisões tomadas com justificativa
- * - Updates operacionais de frentes
- * - Evidências anexadas
- * - POPs atualizados
  */
 
 import { store } from '../state/StateManager.js';
@@ -46,43 +39,57 @@ export function renderActivityLog() {
     </div>
 
     <!-- TIMELINE PRINCIPAL -->
-    <div class="console-panel">
-      <div class="console-panel__header">
-        <span class="text-xs fw-bold text-primary">REGISTROS CRONOLÓGICOS (${filteredEvents.length})</span>
-        <span class="text-xs text-muted">Histórico persistente e imutável</span>
+    <div class="card-panel">
+      <div class="card-panel__header">
+        <span>Registros Cronológicos (${filteredEvents.length})</span>
+        <span class="text-xs text-muted">Histórico persistente e auditável</span>
       </div>
-      <div class="console-panel__body" style="padding: 0;">
+      <div class="card-panel__body" style="padding: 0;">
         ${filteredEvents.length === 0 ? `
-          <div class="empty-state" style="padding: var(--sp-12);">
-            <div class="empty-state__icon">📜</div>
-            <div class="empty-state__title">Nenhum evento registrado com os filtros atuais</div>
+          <div style="padding: var(--sp-12); text-align: center;" class="text-muted text-xs">
+            Nenhum evento registrado com os filtros atuais
           </div>
-        ` : filteredEvents.map(evt => `
-          <div class="console-row" style="padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--clr-border-subtle);">
-            <div class="flex justify-between items-start mb-2">
-              <div class="flex items-center gap-3">
-                <span class="badge ${getEventBadgeClass(evt.eventType)} text-xs">${evt.eventType}</span>
-                <span class="text-xs font-mono fw-bold text-muted">${evt.entityId || 'SYS'}</span>
-                <span class="text-xs text-primary fw-semibold">${evt.reason || 'Alteração operacional'}</span>
-              </div>
-              <span class="text-xs font-mono text-muted">
-                ${evt.timestamp ? new Date(evt.timestamp).toLocaleString('pt-BR') : 'Hoje'}
-              </span>
-            </div>
+        ` : filteredEvents.map(evt => {
+          let cleanReason = evt.reason || 'Alteração operacional';
+          if (typeof cleanReason === 'string' && cleanReason.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(cleanReason);
+              cleanReason = parsed.resolutionNotes || parsed.summary || cleanReason;
+            } catch(e) {}
+          }
 
-            <div class="grid-3 text-xs text-muted mt-2" style="gap: var(--sp-4);">
-              <div>
-                <span class="text-secondary">Responsável:</span> <strong class="text-primary">${evt.actor || 'Sistema'}</strong>
+          const eventDate = evt.timestamp ? new Date(evt.timestamp) : new Date();
+          const formattedDate = !isNaN(eventDate) ? eventDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Hoje';
+
+          return `
+            <div class="op-row justify-between" style="padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--border-subtle); flex-direction: column; align-items: flex-start; gap: var(--sp-2);">
+              <div class="flex justify-between items-start" style="width: 100%;">
+                <div class="flex items-center gap-3">
+                  <span class="badge ${getEventBadgeClass(evt.eventType)}">${evt.eventType}</span>
+                  <span class="font-mono text-xs text-muted fw-bold">${evt.entityId || 'SYS'}</span>
+                  <span class="text-sm fw-semibold text-primary">${cleanReason}</span>
+                </div>
+                <span class="text-xs font-mono text-muted" style="white-space: nowrap;">
+                  ${formattedDate}
+                </span>
               </div>
-              <div>
-                ${evt.previousState ? `<span class="text-secondary">Transição:</span> ${evt.previousState} ➔ <strong class="text-brand">${evt.newState}</strong>` : `<span class="text-secondary">Estado:</span> <strong class="text-brand">${evt.newState || 'N/A'}</strong>`}
-              </div>
-              <div>
-                ${evt.evidence ? `<span class="text-secondary">Evidência:</span> ${evt.evidence}` : ''}
+
+              <div class="flex items-center gap-6 text-xs text-muted mt-1" style="flex-wrap: wrap;">
+                <div>
+                  <span class="text-secondary">Responsável:</span> <strong class="text-primary">${evt.actor || 'Leonardo (Ops)'}</strong>
+                </div>
+                <div>
+                  ${evt.previousState && evt.previousState !== 'N/A' ? `<span class="text-secondary">Transição:</span> <span class="badge badge--neutral">${evt.previousState}</span> ➔ <span class="badge badge--on-track">${evt.newState}</span>` : `<span class="text-secondary">Estado:</span> <strong class="text-brand">${evt.newState || 'REGISTRADO'}</strong>`}
+                </div>
+                ${evt.evidence ? `
+                  <div>
+                    <span class="text-secondary">Ref / Ata:</span> <strong class="text-primary">${evt.evidence}</strong>
+                  </div>
+                ` : ''}
               </div>
             </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     </div>
   `;
