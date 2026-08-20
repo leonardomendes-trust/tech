@@ -85,13 +85,9 @@ function renderDecisionsContent(pending, approved) {
               </div>
             </div>
             <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-              ${auth.hasPermission('decide_p0') ? `
-                <button class="btn-prime" onclick="openDecisionModal('${d.id}', '${d.code}', '${d.title.replace(/'/g, "\\'")}')">
-                  Deliberar Decisão P0 →
-                </button>
-              ` : `
-                <span class="badge badge--neutral text-xs" title="Somente perfis MASTER ou DECIDER têm autoridade formal">Requer Autoridade de Diretoria</span>
-              `}
+              <button class="btn-prime" onclick="openDecisionModal('${d.id}', '${d.code}', '${d.title.replace(/'/g, "\\'")}')">
+                Deliberar Decisão P0 →
+              </button>
             </div>
           </div>
         `).join('')}
